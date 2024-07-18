@@ -42,7 +42,7 @@ class MyResourceProvider implements pulumi.dynamic.ResourceProvider {
   }
 }
 
-class MyResource extends pulumi.dynamic.Resource {
+export class MyResource extends pulumi.dynamic.Resource {
   constructor(
     name: string,
     props: MyResourceInputs,

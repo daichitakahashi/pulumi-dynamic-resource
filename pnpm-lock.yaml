@@ -5,9 +5,15 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@pulumi/cloudflare':
+    specifier: ^5.34.0
+    version: 5.34.0(typescript@5.5.3)
   '@pulumi/pulumi':
     specifier: ^3.0.0
     version: 3.124.0(typescript@5.5.3)
+  effect:
+    specifier: ^3.5.6
+    version: 3.5.6
 
 devDependencies:
   '@biomejs/biome':
@@ -512,6 +518,17 @@ packages:
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
     dev: false
 
+  /@pulumi/cloudflare@5.34.0(typescript@5.5.3):
+    resolution: {integrity: sha512-UheKhkzZZ3x1kbnpAwEZwA5sLp8oDLwoYP7b24ah+HEDhe2jv+4TYzwdJMYrx9mqfbtpfHXp4/cHExntMbT8Wg==}
+    dependencies:
+      '@pulumi/pulumi': 3.124.0(typescript@5.5.3)
+    transitivePeerDependencies:
+      - bluebird
+      - supports-color
+      - ts-node
+      - typescript
+    dev: false
+
   /@pulumi/pulumi@3.124.0(typescript@5.5.3):
     resolution: {integrity: sha512-5ytgK1RQYZD310aj0+RTauBpnB1RVO0j4Ql7tvpioklwRmOclVzTMyeaR2xd02Gpw9iyRwvoWHxgCV0owPdu+w==}
     engines: {node: '>=18'}
@@ -900,6 +917,10 @@ packages:
 
   /eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
+    dev: false
+
+  /effect@3.5.6:
+    resolution: {integrity: sha512-3PMiC+XMaLkHx9Nlxfr6ot/8/gVq9aEjMlBvyKzJx0p4h1ZyNEjPxvAZQ9tlxAtXBvmfRpmIwHxG99hi8qhEtQ==}
     dev: false
 
   /emoji-regex@8.0.0:

@@ -1,0 +1,11 @@
+{
+    "name": "pulumi-dynamic-resource",
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^1.8.3",
+        "typescript": "^5.5.3"
+    }
+}

@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@effect/platform':
+    specifier: ^0.59.2
+    version: 0.59.2(@effect/schema@0.68.26)(effect@3.5.6)
   '@pulumi/cloudflare':
     specifier: ^5.34.0
     version: 5.34.0(typescript@5.5.3)
@@ -112,6 +115,27 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@effect/platform@0.59.2(@effect/schema@0.68.26)(effect@3.5.6):
+    resolution: {integrity: sha512-mKhNFcElmQ10ofiCpxpkWpGbU/s2rELujjasgt339iatmtcg5xdxbIPLyvIAJga+CJq6Mhg2sTOGlfwE6GFu2Q==}
+    peerDependencies:
+      '@effect/schema': ^0.68.26
+      effect: ^3.5.6
+    dependencies:
+      '@effect/schema': 0.68.26(effect@3.5.6)
+      effect: 3.5.6
+      find-my-way-ts: 0.1.5
+      multipasta: 0.2.2
+    dev: false
+
+  /@effect/schema@0.68.26(effect@3.5.6):
+    resolution: {integrity: sha512-o1O/ZmlHXRe9t548YrQ9sudjRWJqCtsU9KnQHzvZm5pHSc4reuZVQufCXctcR0aETf9OFOYUuETrxjEQehq/Lg==}
+    peerDependencies:
+      effect: ^3.5.6
+    dependencies:
+      effect: 3.5.6
+      fast-check: 3.20.0
+    dev: false
 
   /@grpc/grpc-js@1.11.1:
     resolution: {integrity: sha512-gyt/WayZrVPH2w/UTLansS7F9Nwld472JxxaETamrM8HNlsa+jSLNyKAZmhxI2Me4c3mQHFiS1wWHDY1g1Kthw==}
@@ -984,6 +1008,13 @@ packages:
     resolution: {integrity: sha512-dX7e/LHVJ6W3DE1MHWi9S1EYzDESENfLrYohG2G++ovZrYOkm4Knwa0mc1cn84xJOR4KEU0WSchhLbd0UklbHw==}
     dev: false
 
+  /fast-check@3.20.0:
+    resolution: {integrity: sha512-pZIjqLpOZgdSLecec4GKC3Zq5702MZ34upMKxojnNVSWA0K64V3pXOBT1Wdsrc3AphLtzRBbsi8bRWF4TUGmUg==}
+    engines: {node: '>=8.0.0'}
+    dependencies:
+      pure-rand: 6.1.0
+    dev: false
+
   /fdir@6.1.1(picomatch@3.0.1):
     resolution: {integrity: sha512-QfKBVg453Dyn3mr0Q0O+Tkr1r79lOTAKSi9f/Ot4+qVEwxWhav2Z+SudrG9vQjM2aYRMQQZ2/Q1zdA8ACM1pDg==}
     peerDependencies:
@@ -993,6 +1024,10 @@ packages:
         optional: true
     dependencies:
       picomatch: 3.0.1
+    dev: false
+
+  /find-my-way-ts@0.1.5:
+    resolution: {integrity: sha512-4GOTMrpGQVzsCH2ruUn2vmwzV/02zF4q+ybhCIrw/Rkt3L8KWcycdC6aJMctJzwN4fXD4SD5F/4B9Sksh5rE0A==}
     dev: false
 
   /find-up@6.3.0:
@@ -1421,6 +1456,10 @@ packages:
     resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
     dev: false
 
+  /multipasta@0.2.2:
+    resolution: {integrity: sha512-KKGdmXIJUmt9BV45LsbUdMnju8eCNSyF9KpbyqK2E3wQXjpPQOg52/Hc+nsmBacmEkNxLVT5h1y3ZgEXB4prXg==}
+    dev: false
+
   /negotiator@0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
@@ -1716,6 +1755,10 @@ packages:
     dependencies:
       end-of-stream: 1.4.4
       once: 1.4.0
+    dev: false
+
+  /pure-rand@6.1.0:
+    resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
     dev: false
 
   /quick-lru@5.1.1:

@@ -1,10 +1,14 @@
+import * as crypto from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
+import { HttpBody, HttpClientRequest } from "@effect/platform";
+import * as Http from "@effect/platform/HttpClient";
 import type { Input, dynamic } from "@pulumi/pulumi";
 import {
   Array as A,
   Boolean as B,
   Effect as E,
   Option as O,
+  Schedule,
   String as Str,
   flow,
   pipe,
@@ -124,13 +128,9 @@ class ModuleWorkerScriptProvider
   async create(
     args: ModuleWorkerScriptProviderArgs,
   ): Promise<dynamic.CreateResult<ModuleWorkerScriptProviderState>> {
-    const entries = await readdir(args.scriptDir, { withFileTypes: true });
-    for (const entry of entries) {
-      entry.isFile;
-    }
-
+    await E.runPromise(uploadModuleWorkerScript(this.apiToken, args));
     return {
-      id: "",
+      id: crypto.randomUUID(),
       outs: args,
     };
   }
@@ -177,7 +177,22 @@ const sourceMapRx = /^.*\.js\.map$/i;
 const optionalMap = <I, O>(list: I[] | undefined, fn: (v: I) => O): O[] =>
   list ? pipe(list, A.map(fn)) : ([] as O[]);
 
-const uploadModuleWorkerScript = (args: ModuleWorkerScriptProviderArgs) =>
+const file = ({
+  filename,
+  contentType,
+}: { filename: string; contentType: string }) =>
+  pipe(
+    E.tryPromise({
+      try: () => readFile(filename),
+      catch: () => "failed to read file",
+    }),
+    E.map((data) => new File([data], filename, { type: contentType })),
+  );
+
+const uploadModuleWorkerScript = (
+  apiToken: string,
+  args: ModuleWorkerScriptProviderArgs,
+) =>
   pipe(
     E.Do,
     E.bind("validatedAccountId", () =>
@@ -262,4 +277,32 @@ const uploadModuleWorkerScript = (args: ModuleWorkerScriptProviderArgs) =>
     })),
 
     // construct FormData and request
+    E.bind("formData", ({ moduleFiles, metadata }) =>
+      E.gen(function* () {
+        const formData = new FormData();
+        formData.set(
+          "metadata",
+          new File([JSON.stringify(metadata)], "metadata", {
+            type: "application/json",
+          }),
+        );
+        for (const f of moduleFiles) {
+          formData.set(f.filename, yield* file(f));
+        }
+        return HttpBody.formData(formData);
+      }),
+    ),
+    E.flatMap(({ formData }) =>
+      E.scoped(
+        E.retry(
+          Http.fetchOk(
+            HttpClientRequest.post("", {
+              headers: { Authorization: `Bearer ${apiToken}` },
+              body: formData,
+            }),
+          ),
+          Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
+        ),
+      ),
+    ),
   );

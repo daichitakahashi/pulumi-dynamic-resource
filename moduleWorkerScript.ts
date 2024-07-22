@@ -2,14 +2,22 @@ import * as crypto from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { HttpBody, HttpClientRequest } from "@effect/platform";
 import * as Http from "@effect/platform/HttpClient";
-import type { Input, dynamic } from "@pulumi/pulumi";
+import type { CustomResourceOptions, Input } from "@pulumi/pulumi";
+import {
+  type CreateResult,
+  type DiffResult,
+  Resource,
+  type ResourceProvider,
+  type UpdateResult,
+} from "@pulumi/pulumi/dynamic";
 import {
   Array as A,
   Boolean as B,
+  Data as D,
   Effect as E,
+  Equal as Eq,
   Option as O,
   Schedule,
-  Schema,
   String as Str,
   flow,
   pipe,
@@ -115,11 +123,11 @@ interface AnalyticsEngineBindingProviderArgs {
   dataset: string;
 }
 
-type ModuleWorkerScriptProviderState = ModuleWorkerScriptArgs;
+type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs;
 
 class ModuleWorkerScriptProvider
   implements
-    dynamic.ResourceProvider<
+    ResourceProvider<
       ModuleWorkerScriptProviderArgs,
       ModuleWorkerScriptProviderState
     >
@@ -128,7 +136,7 @@ class ModuleWorkerScriptProvider
 
   async create(
     args: ModuleWorkerScriptProviderArgs,
-  ): Promise<dynamic.CreateResult<ModuleWorkerScriptProviderState>> {
+  ): Promise<CreateResult<ModuleWorkerScriptProviderState>> {
     await E.runPromise(uploadModuleWorkerScript(this.apiToken, args));
     return {
       id: crypto.randomUUID(),
@@ -137,20 +145,18 @@ class ModuleWorkerScriptProvider
   }
 
   async diff(
-    id: string,
+    _id: string,
     olds: ModuleWorkerScriptProviderState,
     news: ModuleWorkerScriptProviderArgs,
-  ): Promise<dynamic.DiffResult> {
-    return {
-      changes: true,
-    };
+  ): Promise<DiffResult> {
+    return E.runPromise(diffModuleWorkerScript(olds, news));
   }
 
   async update(
     _id: string,
     _olds: ModuleWorkerScriptProviderState,
     news: ModuleWorkerScriptProviderArgs,
-  ): Promise<dynamic.UpdateResult<ModuleWorkerScriptProviderState>> {
+  ): Promise<UpdateResult<ModuleWorkerScriptProviderState>> {
     await E.runPromise(uploadModuleWorkerScript(this.apiToken, news));
     return {
       outs: news,
@@ -314,9 +320,31 @@ const uploadModuleWorkerScript = (
     ),
   );
 
+const diffModuleWorkerScript = (
+  olds: ModuleWorkerScriptProviderState,
+  news: ModuleWorkerScriptProviderArgs,
+): E.Effect<DiffResult> =>
+  pipe(
+    E.Do,
+    E.let("replaces", () =>
+      pipe(
+        ["accountId", "name"] as const,
+        A.flatMap((key) => (olds[key] === news[key] ? [] : [key])),
+      ),
+    ),
+    E.bind("changes", ({ replaces }) =>
+      pipe(
+        E.Do,
+        E.let("byReplaces", () => replaces.length > 0),
+        E.let("byUpdates", () => Eq.equals(D.struct(olds), D.struct(news))),
+        E.map(({ byReplaces, byUpdates }) => byReplaces || byUpdates),
+      ),
+    ),
+  );
+
 const deleteModuleWorkerScript = (
   apiToken: string,
-  args: ModuleWorkerScriptArgs,
+  args: ModuleWorkerScriptProviderArgs,
 ) =>
   E.scoped(
     E.retry(
@@ -331,3 +359,14 @@ const deleteModuleWorkerScript = (
       Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
     ),
   );
+
+export class ModuleWorkerScript extends Resource {
+  constructor(
+    name: string,
+    props: ModuleWorkerScriptArgs,
+    apiToken: string,
+    opts?: CustomResourceOptions,
+  ) {
+    super(new ModuleWorkerScriptProvider(apiToken), name, props, opts);
+  }
+}

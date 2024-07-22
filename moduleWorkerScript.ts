@@ -22,6 +22,7 @@ import {
   flow,
   pipe,
 } from "effect";
+import type { unwrapInput } from "./typeUtils";
 
 export interface ModuleWorkerScriptArgs {
   accountId: Input<string>;
@@ -73,56 +74,7 @@ export interface AnalyticsEngineBindingArgs {
   dataset: Input<string>;
 }
 
-interface ModuleWorkerScriptProviderArgs {
-  accountId: string;
-  name: string;
-  scriptDir: string;
-  mainModule: string;
-  compatibilityDate?: string;
-  compatibilityFlags?: string[];
-  plainTextBindings?: PlainTextBindingProviderArgs[];
-  secretTextBindings?: SecretTextBindingProviderArgs[];
-  kvNamespaceBindings?: KVNamespaceBindingProviderArgs[];
-  r2BucketBindings?: R2BucketBindingProviderArgs[];
-  queueBindings?: QueueBindingProviderArgs[];
-  d1DatabaseBindings?: D1DatabaseBindingProviderArgs[];
-  serviceBindings?: ServiceBindingProviderArgs[];
-  analyticsEngineBindings?: AnalyticsEngineBindingProviderArgs[];
-  logpush?: boolean;
-}
-interface PlainTextBindingProviderArgs {
-  name: string;
-  text: string;
-}
-interface SecretTextBindingProviderArgs {
-  name: string;
-  text: string;
-}
-interface KVNamespaceBindingProviderArgs {
-  name: string;
-  namespaceId: string;
-}
-interface R2BucketBindingProviderArgs {
-  name: string;
-  bucketName: string;
-}
-interface QueueBindingProviderArgs {
-  name: string;
-  queueName: string;
-}
-interface D1DatabaseBindingProviderArgs {
-  name: string;
-  databaseId: string;
-}
-interface ServiceBindingProviderArgs {
-  name: string;
-  service: string;
-}
-interface AnalyticsEngineBindingProviderArgs {
-  name: string;
-  dataset: string;
-}
-
+type ModuleWorkerScriptProviderArgs = unwrapInput<ModuleWorkerScriptArgs>;
 type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs;
 
 class ModuleWorkerScriptProvider

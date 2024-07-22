@@ -300,7 +300,7 @@ const uploadModuleWorkerScript = (
       E.scoped(
         E.retry(
           Http.fetchOk(
-            HttpClientRequest.post(
+            HttpClientRequest.put(
               `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(args.accountId)}/workers/scripts/${encodeURIComponent(args.name)}`,
               {
                 headers: { Authorization: `Bearer ${apiToken}` },

@@ -9,6 +9,7 @@ import {
   Effect as E,
   Option as O,
   Schedule,
+  Schema,
   String as Str,
   flow,
   pipe,
@@ -146,18 +147,21 @@ class ModuleWorkerScriptProvider
   }
 
   async update(
-    id: string,
-    olds: ModuleWorkerScriptProviderState,
+    _id: string,
+    _olds: ModuleWorkerScriptProviderState,
     news: ModuleWorkerScriptProviderArgs,
   ): Promise<dynamic.UpdateResult<ModuleWorkerScriptProviderState>> {
-    return {};
+    await E.runPromise(uploadModuleWorkerScript(this.apiToken, news));
+    return {
+      outs: news,
+    };
   }
 
   async delete(
-    id: string,
+    _id: string,
     props: ModuleWorkerScriptProviderState,
   ): Promise<void> {
-    return;
+    await E.runPromise(deleteModuleWorkerScript(this.apiToken, props));
   }
 }
 
@@ -296,13 +300,34 @@ const uploadModuleWorkerScript = (
       E.scoped(
         E.retry(
           Http.fetchOk(
-            HttpClientRequest.post("", {
-              headers: { Authorization: `Bearer ${apiToken}` },
-              body: formData,
-            }),
+            HttpClientRequest.post(
+              `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(args.accountId)}/workers/scripts/${encodeURIComponent(args.name)}`,
+              {
+                headers: { Authorization: `Bearer ${apiToken}` },
+                body: formData,
+              },
+            ),
           ),
           Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
         ),
       ),
+    ),
+  );
+
+const deleteModuleWorkerScript = (
+  apiToken: string,
+  args: ModuleWorkerScriptArgs,
+) =>
+  E.scoped(
+    E.retry(
+      Http.fetchOk(
+        HttpClientRequest.del(
+          `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(args.accountId)}/workers/scripts/${encodeURIComponent(args.name)}`,
+          {
+            headers: { Authorization: `Bearer ${apiToken}` },
+          },
+        ),
+      ),
+      Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
     ),
   );

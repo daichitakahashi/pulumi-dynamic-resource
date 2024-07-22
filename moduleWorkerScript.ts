@@ -6,10 +6,11 @@ import type { Input, dynamic } from "@pulumi/pulumi";
 import {
   Array as A,
   Boolean as B,
+  Data as D,
   Effect as E,
+  Equal as Eq,
   Option as O,
   Schedule,
-  Schema,
   String as Str,
   flow,
   pipe,
@@ -115,7 +116,7 @@ interface AnalyticsEngineBindingProviderArgs {
   dataset: string;
 }
 
-type ModuleWorkerScriptProviderState = ModuleWorkerScriptArgs;
+type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs;
 
 class ModuleWorkerScriptProvider
   implements
@@ -137,13 +138,11 @@ class ModuleWorkerScriptProvider
   }
 
   async diff(
-    id: string,
+    _id: string,
     olds: ModuleWorkerScriptProviderState,
     news: ModuleWorkerScriptProviderArgs,
   ): Promise<dynamic.DiffResult> {
-    return {
-      changes: true,
-    };
+    return E.runPromise(diffModuleWorkerScript(olds, news));
   }
 
   async update(
@@ -310,6 +309,28 @@ const uploadModuleWorkerScript = (
           ),
           Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
         ),
+      ),
+    ),
+  );
+
+const diffModuleWorkerScript = (
+  olds: ModuleWorkerScriptProviderState,
+  news: ModuleWorkerScriptProviderArgs,
+): E.Effect<dynamic.DiffResult> =>
+  pipe(
+    E.Do,
+    E.let("replaces", () =>
+      pipe(
+        ["accountId", "name"] as const,
+        A.flatMap((key) => (olds[key] === news[key] ? [] : [key])),
+      ),
+    ),
+    E.bind("changes", ({ replaces }) =>
+      pipe(
+        E.Do,
+        E.let("byReplaces", () => replaces.length > 0),
+        E.let("byUpdates", () => Eq.equals(D.struct(olds), D.struct(news))),
+        E.map(({ byReplaces, byUpdates }) => byReplaces || byUpdates),
       ),
     ),
   );

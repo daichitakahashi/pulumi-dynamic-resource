@@ -3,6 +3,7 @@
     "main": "index.ts",
     "dependencies": {
         "@effect/platform": "^0.59.2",
+        "@effect/schema": "^0.68.26",
         "@pulumi/cloudflare": "^5.34.0",
         "@pulumi/pulumi": "^3.0.0",
         "effect": "^3.5.6"

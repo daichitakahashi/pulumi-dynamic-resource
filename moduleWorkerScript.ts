@@ -75,7 +75,9 @@ export interface AnalyticsEngineBindingArgs {
 }
 
 type ModuleWorkerScriptProviderArgs = unwrapInput<ModuleWorkerScriptArgs>;
-type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs;
+type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs & {
+  scriptHash: string;
+};
 
 class ModuleWorkerScriptProvider
   implements
@@ -89,10 +91,12 @@ class ModuleWorkerScriptProvider
   async create(
     args: ModuleWorkerScriptProviderArgs,
   ): Promise<CreateResult<ModuleWorkerScriptProviderState>> {
-    await E.runPromise(uploadModuleWorkerScript(this.apiToken, args));
+    const scriptHash = await E.runPromise(
+      uploadModuleWorkerScript(this.apiToken, args),
+    );
     return {
       id: crypto.randomUUID(),
-      outs: args,
+      outs: { ...args, scriptHash },
     };
   }
 
@@ -109,9 +113,11 @@ class ModuleWorkerScriptProvider
     _olds: ModuleWorkerScriptProviderState,
     news: ModuleWorkerScriptProviderArgs,
   ): Promise<UpdateResult<ModuleWorkerScriptProviderState>> {
-    await E.runPromise(uploadModuleWorkerScript(this.apiToken, news));
+    const scriptHash = await E.runPromise(
+      uploadModuleWorkerScript(this.apiToken, news),
+    );
     return {
-      outs: news,
+      outs: { ...news, scriptHash },
     };
   }
 
@@ -139,6 +145,43 @@ const sourceMapRx = /^.*\.js\.map$/i;
 const optionalMap = <I, O>(list: I[] | undefined, fn: (v: I) => O): O[] =>
   list ? pipe(list, A.map(fn)) : ([] as O[]);
 
+const scripts = (dir: string) =>
+  pipe(
+    E.promise(() => readdir(dir, { withFileTypes: true })),
+    E.map(
+      flow(
+        A.filter((e) => e.isFile()),
+        A.map((e) => ({
+          filename: e.name,
+          contentType: javascriptRx.test(e.name)
+            ? "application/javascript+module"
+            : wasmRx.test(e.name)
+              ? "application/wasm"
+              : sourceMapRx.test(e.name)
+                ? "application/source-map"
+                : "",
+        })),
+        A.filter((f) => !!f.contentType),
+      ),
+    ),
+  );
+
+const scriptHash = (i: { data: Buffer; contentType: string }) =>
+  crypto
+    .createHash("sha512")
+    .update(i.contentType)
+    .update(i.data)
+    .digest("hex");
+
+const scriptsHash = (scriptHashes: string[]) =>
+  pipe(
+    scriptHashes,
+    A.reduce(crypto.createHash("sha512"), (hash, scriptHash) =>
+      hash.update(scriptHash),
+    ),
+    (hash) => hash.digest("hex"),
+  );
+
 const file = ({
   filename,
   contentType,
@@ -148,7 +191,10 @@ const file = ({
       try: () => readFile(filename),
       catch: () => "failed to read file",
     }),
-    E.map((data) => new File([data], filename, { type: contentType })),
+    E.map((data) => ({
+      content: new File([data], filename, { type: contentType }),
+      hash: scriptHash({ data, contentType }),
+    })),
   );
 
 const uploadModuleWorkerScript = (
@@ -167,25 +213,7 @@ const uploadModuleWorkerScript = (
       assertNonEmptyString(args.scriptDir, "empty scriptDir provided"),
     ),
     E.bind("moduleFiles", ({ validatedScriptDir }) =>
-      pipe(
-        E.promise(() => readdir(validatedScriptDir, { withFileTypes: true })),
-        E.map(
-          flow(
-            A.filter((e) => e.isFile()),
-            A.map((e) => ({
-              filename: e.name,
-              contentType: javascriptRx.test(e.name)
-                ? "application/javascript+module"
-                : wasmRx.test(e.name)
-                  ? "application/wasm"
-                  : sourceMapRx.test(e.name)
-                    ? "application/source-map"
-                    : "",
-            })),
-            A.filter((f) => !!f.contentType),
-          ),
-        ),
-      ),
+      scripts(validatedScriptDir),
     ),
     E.bind("validatedMainModule", ({ moduleFiles }) =>
       pipe(
@@ -248,13 +276,19 @@ const uploadModuleWorkerScript = (
             type: "application/json",
           }),
         );
+        const hashes: string[] = [];
         for (const f of moduleFiles) {
-          formData.set(f.filename, yield* file(f));
+          const { content, hash } = yield* file(f);
+          formData.set(f.filename, content);
+          hashes.push(hash);
         }
-        return HttpBody.formData(formData);
+        return {
+          formData: HttpBody.formData(formData),
+          scriptHash: scriptsHash(hashes),
+        };
       }),
     ),
-    E.flatMap(({ formData }) =>
+    E.tap(({ formData: { formData } }) =>
       E.scoped(
         E.retry(
           Http.fetchOk(
@@ -270,6 +304,7 @@ const uploadModuleWorkerScript = (
         ),
       ),
     ),
+    E.map(({ formData: { scriptHash } }) => scriptHash),
   );
 
 const diffModuleWorkerScript = (
@@ -292,6 +327,29 @@ const diffModuleWorkerScript = (
         E.map(({ byReplaces, byUpdates }) => byReplaces || byUpdates),
       ),
     ),
+    E.bind("scriptHashChanged", () =>
+      pipe(
+        scripts(news.scriptDir),
+        E.flatMap((scripts) =>
+          E.all(
+            pipe(
+              scripts,
+              A.map(({ filename, contentType }) =>
+                pipe(
+                  E.promise(() => readFile(filename)),
+                  E.map((data) => scriptHash({ data, contentType })),
+                ),
+              ),
+            ),
+          ),
+        ),
+        E.map((scriptHashes) => scriptsHash(scriptHashes) !== olds.scriptHash),
+      ),
+    ),
+    E.map(({ replaces, changes, scriptHashChanged }) => ({
+      replaces,
+      changes: changes || scriptHashChanged,
+    })),
   );
 
 const deleteModuleWorkerScript = (

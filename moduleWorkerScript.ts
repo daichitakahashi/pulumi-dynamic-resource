@@ -322,9 +322,11 @@ const diffModuleWorkerScript = (
     E.bind("changes", ({ replaces }) =>
       pipe(
         E.Do,
-        E.let("byReplaces", () => replaces.length > 0),
-        E.let("byUpdates", () => Eq.equals(D.struct(olds), D.struct(news))),
-        E.map(({ byReplaces, byUpdates }) => byReplaces || byUpdates),
+        E.let("withReplaces", () => replaces.length > 0),
+        E.let("withoutUpdate", () => Eq.equals(D.struct(olds), D.struct(news))),
+        E.map(
+          ({ withReplaces, withoutUpdate }) => withReplaces || !withoutUpdate,
+        ),
       ),
     ),
     E.bind("scriptHashChanged", () =>

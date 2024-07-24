@@ -64,11 +64,7 @@ class QueueConsumerProvider
     olds: QueueConsumerProviderState,
     news: QueueConsumerProviderArgs,
   ): Promise<DiffResult> {
-    // FIXME: implement
-    return {
-      changes: false,
-      replaces: [],
-    };
+    return E.runPromise(diffQueueConsumer(olds, news));
   }
 
   async update(
@@ -145,6 +141,30 @@ const createQueueConsumer = (
     ),
     E.flatMap((resp) => resp.json),
     E.flatMap(Schema.decodeUnknown(CreateQueueConsumerResponse)),
+  );
+
+const diffQueueConsumer = (
+  olds: QueueConsumerProviderState,
+  news: QueueConsumerProviderArgs,
+): E.Effect<DiffResult> =>
+  pipe(
+    E.Do,
+    E.let("replaces", () =>
+      pipe(
+        ["accountId", "queueId"] as const,
+        A.flatMap((key) => (olds[key] === news[key] ? [] : [key])),
+      ),
+    ),
+    E.bind("changes", ({ replaces }) =>
+      pipe(
+        E.Do,
+        E.let("withReplaces", () => replaces.length > 0),
+        E.let("withoutUpdate", () => Eq.equals(D.struct(olds), D.struct(news))),
+        E.map(
+          ({ withReplaces, withoutUpdate }) => withReplaces || !withoutUpdate,
+        ),
+      ),
+    ),
   );
 
 export class QueueConsumer extends Resource {

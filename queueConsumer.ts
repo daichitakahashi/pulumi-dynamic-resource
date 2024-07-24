@@ -79,7 +79,7 @@ class QueueConsumerProvider
   }
 
   async delete(_id: string, props: QueueConsumerProviderState): Promise<void> {
-    // FIXME: implement
+    await E.runPromise(deleteQueueConsumer(this.apiToken, props));
   }
 }
 
@@ -164,6 +164,25 @@ const diffQueueConsumer = (
           ({ withReplaces, withoutUpdate }) => withReplaces || !withoutUpdate,
         ),
       ),
+    ),
+  );
+
+const deleteQueueConsumer = (
+  apiToken: string,
+  props: QueueConsumerProviderState,
+) =>
+  E.scoped(
+    E.retry(
+      Http.fetchOk(
+        HttpClientRequest.del(
+          `https://api.cloudflare.com/client/v4
+/accounts/${encodeURIComponent(props.accountId)}/queues/${encodeURIComponent(props.queueId)}/consumers/${encodeURIComponent(props.consumerId)}`,
+          {
+            headers: { Authorization: `Bearer ${apiToken}` },
+          },
+        ),
+      ),
+      Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
     ),
   );
 

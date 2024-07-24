@@ -356,13 +356,13 @@ const diffModuleWorkerScript = (
 
 const deleteModuleWorkerScript = (
   apiToken: string,
-  args: ModuleWorkerScriptProviderArgs,
+  props: ModuleWorkerScriptProviderState,
 ) =>
   E.scoped(
     E.retry(
       Http.fetchOk(
         HttpClientRequest.del(
-          `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(args.accountId)}/workers/scripts/${encodeURIComponent(args.name)}`,
+          `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(props.accountId)}/workers/scripts/${encodeURIComponent(props.name)}`,
           {
             headers: { Authorization: `Bearer ${apiToken}` },
           },

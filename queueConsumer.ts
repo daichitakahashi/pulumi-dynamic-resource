@@ -69,12 +69,14 @@ class QueueConsumerProvider
 
   async update(
     _id: string,
-    _olds: QueueConsumerProviderState,
+    olds: QueueConsumerProviderState,
     news: QueueConsumerProviderArgs,
   ): Promise<UpdateResult<QueueConsumerProviderState>> {
-    // FIXME: implement
+    await E.runPromise(
+      updateQueueConsumer(this.apiToken, olds.consumerId, news),
+    );
     return {
-      outs: news,
+      outs: { ...news, consumerId: olds.consumerId },
     };
   }
 
@@ -165,6 +167,35 @@ const diffQueueConsumer = (
         ),
       ),
     ),
+  );
+
+const updateQueueConsumer = (
+  apiToken: string,
+  consumerId: string,
+  args: QueueConsumerProviderArgs,
+) =>
+  pipe(
+    HttpBody.json(params(args)),
+    E.flatMap((body) =>
+      E.scoped(
+        E.retry(
+          Http.fetchOk(
+            HttpClientRequest.post(
+              `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(args.accountId)}/queues/${encodeURIComponent(args.queueId)}/consumers/${encodeURIComponent(consumerId)}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${apiToken}`,
+                  "Content-Type": "application/json",
+                },
+                body,
+              },
+            ),
+          ),
+          Schedule.addDelay(Schedule.recurs(5), () => "1 second"),
+        ),
+      ),
+    ),
+    E.flatMap((resp) => resp.text),
   );
 
 const deleteQueueConsumer = (

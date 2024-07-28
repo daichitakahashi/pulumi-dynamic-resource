@@ -206,8 +206,7 @@ const deleteQueueConsumer = (
     E.retry(
       Http.fetchOk(
         HttpClientRequest.del(
-          `https://api.cloudflare.com/client/v4
-/accounts/${encodeURIComponent(props.accountId)}/queues/${encodeURIComponent(props.queueId)}/consumers/${encodeURIComponent(props.consumerId)}`,
+          `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(props.accountId)}/queues/${encodeURIComponent(props.queueId)}/consumers/${encodeURIComponent(props.consumerId)}`,
           {
             headers: { Authorization: `Bearer ${apiToken}` },
           },

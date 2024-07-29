@@ -74,9 +74,8 @@ export interface AnalyticsEngineBindingArgs {
   dataset: Input<string>;
 }
 
-export type ModuleWorkerScriptProviderArgs =
-  unwrapInput<ModuleWorkerScriptArgs>;
-export type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs & {
+type ModuleWorkerScriptProviderArgs = unwrapInput<ModuleWorkerScriptArgs>;
+type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs & {
   scriptHash: string;
 };
 

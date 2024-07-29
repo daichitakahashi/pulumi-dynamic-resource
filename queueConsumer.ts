@@ -31,7 +31,7 @@ type QueueConsumerProviderState = QueueConsumerProviderArgs & {
   consumerId: string;
 };
 
-class QueueConsumerProvider
+export class QueueConsumerProvider
   implements
     ResourceProvider<QueueConsumerProviderArgs, QueueConsumerProviderState>
 {
@@ -151,10 +151,10 @@ const diffQueueConsumer = (
       pipe(
         E.Do,
         E.let("withReplaces", () => replaces.length > 0),
-        E.let(
-          "withoutUpdate",
-          () => canonicalJSON(olds) === canonicalJSON(news),
-        ),
+        E.let("withoutUpdate", () => {
+          const { consumerId, ...stateWithoutConsumeerId } = olds;
+          return canonicalJSON(stateWithoutConsumeerId) === canonicalJSON(news);
+        }),
         E.map(
           ({ withReplaces, withoutUpdate }) => withReplaces || !withoutUpdate,
         ),

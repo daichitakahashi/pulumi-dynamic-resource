@@ -1,5 +1,6 @@
 import * as crypto from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
+import * as path from "node:path";
 import { HttpBody, HttpClientRequest } from "@effect/platform";
 import * as Http from "@effect/platform/HttpClient";
 import type { CustomResourceOptions, Input } from "@pulumi/pulumi";
@@ -13,16 +14,15 @@ import {
 import {
   Array as A,
   Boolean as B,
-  Data as D,
   Effect as E,
-  Equal as Eq,
   Option as O,
   Schedule,
   String as Str,
   flow,
   pipe,
 } from "effect";
-import type { unwrapInput } from "./typeUtils";
+
+import { canonicalJSON, type unwrapInput } from "./utils";
 
 export interface ModuleWorkerScriptArgs {
   accountId: Input<string>;
@@ -79,7 +79,7 @@ type ModuleWorkerScriptProviderState = ModuleWorkerScriptProviderArgs & {
   scriptHash: string;
 };
 
-class ModuleWorkerScriptProvider
+export class ModuleWorkerScriptProvider
   implements
     ResourceProvider<
       ModuleWorkerScriptProviderArgs,
@@ -182,13 +182,13 @@ const scriptsHash = (scriptHashes: string[]) =>
     (hash) => hash.digest("hex"),
   );
 
-const file = ({
-  filename,
-  contentType,
-}: { filename: string; contentType: string }) =>
+const file = (
+  dir: string,
+  { filename, contentType }: { filename: string; contentType: string },
+) =>
   pipe(
     E.tryPromise({
-      try: () => readFile(filename),
+      try: () => readFile(path.join(dir, filename)),
       catch: () => "failed to read file",
     }),
     E.map((data) => ({
@@ -267,7 +267,7 @@ const uploadModuleWorkerScript = (
     })),
 
     // construct FormData and request
-    E.bind("formData", ({ moduleFiles, metadata }) =>
+    E.bind("formData", ({ moduleFiles, validatedScriptDir, metadata }) =>
       E.gen(function* () {
         const formData = new FormData();
         formData.set(
@@ -278,7 +278,7 @@ const uploadModuleWorkerScript = (
         );
         const hashes: string[] = [];
         for (const f of moduleFiles) {
-          const { content, hash } = yield* file(f);
+          const { content, hash } = yield* file(validatedScriptDir, f);
           formData.set(f.filename, content);
           hashes.push(hash);
         }
@@ -323,35 +323,37 @@ const diffModuleWorkerScript = (
       pipe(
         E.Do,
         E.let("withReplaces", () => replaces.length > 0),
-        E.let("withoutUpdate", () => Eq.equals(D.struct(olds), D.struct(news))),
+        E.bind("scriptHash", () =>
+          pipe(
+            scripts(news.scriptDir),
+            E.flatMap((scripts) =>
+              E.all(
+                pipe(
+                  scripts,
+                  A.map(({ filename, contentType }) =>
+                    pipe(
+                      E.promise(() =>
+                        readFile(path.join(news.scriptDir, filename)),
+                      ),
+                      E.map((data) => scriptHash({ data, contentType })),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            E.map((scriptHashes) => scriptsHash(scriptHashes)),
+          ),
+        ),
+        E.let(
+          "withoutUpdate",
+          ({ scriptHash }) =>
+            canonicalJSON(olds) === canonicalJSON({ ...news, scriptHash }),
+        ),
         E.map(
           ({ withReplaces, withoutUpdate }) => withReplaces || !withoutUpdate,
         ),
       ),
     ),
-    E.bind("scriptHashChanged", () =>
-      pipe(
-        scripts(news.scriptDir),
-        E.flatMap((scripts) =>
-          E.all(
-            pipe(
-              scripts,
-              A.map(({ filename, contentType }) =>
-                pipe(
-                  E.promise(() => readFile(filename)),
-                  E.map((data) => scriptHash({ data, contentType })),
-                ),
-              ),
-            ),
-          ),
-        ),
-        E.map((scriptHashes) => scriptsHash(scriptHashes) !== olds.scriptHash),
-      ),
-    ),
-    E.map(({ replaces, changes, scriptHashChanged }) => ({
-      replaces,
-      changes: changes || scriptHashChanged,
-    })),
   );
 
 const deleteModuleWorkerScript = (

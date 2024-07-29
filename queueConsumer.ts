@@ -10,19 +10,9 @@ import {
   type ResourceProvider,
   type UpdateResult,
 } from "@pulumi/pulumi/dynamic";
-import {
-  Array as A,
-  Boolean as B,
-  Data as D,
-  Effect as E,
-  Equal as Eq,
-  Option as O,
-  Schedule,
-  String as Str,
-  flow,
-  pipe,
-} from "effect";
-import type { unwrapInput } from "./typeUtils";
+import { Array as A, Effect as E, Schedule, pipe } from "effect";
+
+import { canonicalJSON, type unwrapInput } from "./utils";
 
 export interface QueueConsumerArgs {
   accountId: Input<string>;
@@ -41,7 +31,7 @@ type QueueConsumerProviderState = QueueConsumerProviderArgs & {
   consumerId: string;
 };
 
-class QueueConsumerProvider
+export class QueueConsumerProvider
   implements
     ResourceProvider<QueueConsumerProviderArgs, QueueConsumerProviderState>
 {
@@ -161,7 +151,10 @@ const diffQueueConsumer = (
       pipe(
         E.Do,
         E.let("withReplaces", () => replaces.length > 0),
-        E.let("withoutUpdate", () => Eq.equals(D.struct(olds), D.struct(news))),
+        E.let("withoutUpdate", () => {
+          const { consumerId, ...stateWithoutConsumeerId } = olds;
+          return canonicalJSON(stateWithoutConsumeerId) === canonicalJSON(news);
+        }),
         E.map(
           ({ withReplaces, withoutUpdate }) => withReplaces || !withoutUpdate,
         ),
